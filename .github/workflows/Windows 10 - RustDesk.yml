@@ -17,7 +17,7 @@ jobs:
       - name: Wait for Services to Initialize
         run: |
           echo "Waiting for RustDesk services to fully initialize..."
-          timeout /t 45 /nobreak
+          Start-Sleep -Seconds 45
       
       - name: Check RustDesk Process Status
         run: |
@@ -34,14 +34,14 @@ jobs:
       - name: Wait and Retry RustDesk Connection
         run: |
           echo "Waiting additional time for RustDesk to establish connection..."
-          timeout /t 30 /nobreak
+          Start-Sleep -Seconds 30
           echo "Second attempt to get RustDesk ID..."
           cmd /c show.bat
       
       - name: Final RustDesk ID Retrieval
         run: |
           echo "Final attempt to get RustDesk ID..."
-          timeout /t 15 /nobreak
+          Start-Sleep -Seconds 15
           cmd /c show.bat
           echo "If ID still shows as 'v', there may be a network connectivity issue."
       
