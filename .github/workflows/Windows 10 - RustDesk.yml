@@ -7,16 +7,49 @@ jobs:
   build:
     name: Start Building...
     runs-on: windows-latest
-    timeout-minutes: 99999
-    
+    timeout-minutes: 9999
     steps:
       - name: Downloading & Installing Essentials
         run: |
           Invoke-WebRequest -Uri "https://www.dropbox.com/scl/fi/qdyd4p9t6xoabl95n5o3g/Downloads.bat?rlkey=snr74vv1vr8k5suujugvrhjtm&dl=1" -OutFile "Downloads.bat"
           cmd /c Downloads.bat
-
-      - name: Log In To AnyDesk
-        run: cmd /c show.bat
-
+      
+      - name: Wait for Services to Initialize
+        run: |
+          echo "Waiting for RustDesk services to fully initialize..."
+          timeout /t 45 /nobreak
+      
+      - name: Check RustDesk Process Status
+        run: |
+          echo "Checking RustDesk processes..."
+          tasklist | findstr -i rustdesk
+          echo "Checking if RustDesk service is running..."
+          sc query "RustDesk"
+      
+      - name: Log In To RustDesk (Attempt 1)
+        run: |
+          echo "First attempt to get RustDesk ID..."
+          cmd /c show.bat
+      
+      - name: Wait and Retry RustDesk Connection
+        run: |
+          echo "Waiting additional time for RustDesk to establish connection..."
+          timeout /t 30 /nobreak
+          echo "Second attempt to get RustDesk ID..."
+          cmd /c show.bat
+      
+      - name: Final RustDesk ID Retrieval
+        run: |
+          echo "Final attempt to get RustDesk ID..."
+          timeout /t 15 /nobreak
+          cmd /c show.bat
+          echo "If ID still shows as 'v', there may be a network connectivity issue."
+      
+      - name: Keep Session Alive
+        run: |
+          echo "Session is now active. RustDesk should be accessible."
+          echo "Check the output above for your RustDesk ID and Password."
+          echo "Session will remain active for the workflow timeout period."
+      
       - name: Time Counter
         run: python time.py
