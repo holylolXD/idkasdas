@@ -1,4 +1,4 @@
-name: Windows - RustDesk
+name: Windows - RustDesk (Parallel Downloads)
 
 on:
   workflow_dispatch:
@@ -20,7 +20,7 @@ jobs:
             New-Item -Path "D:\" -ItemType Directory
           }
 
-      - name: Download files in parallel with WebClient
+      - name: Download files in parallel with improved error handling
         shell: pwsh
         run: |
           $urls = @(
@@ -28,22 +28,76 @@ jobs:
             @{ Url = "https://a-tushar-82q-fef07c6bf20a.herokuapp.com/540743/SEC504+Videos+2023+%40CyberSecCommunity.part2.rar?hash=AgADSy"; Output = "D:\SEC504.part2.rar" },
             @{ Url = "https://a-tushar-82q-fef07c6bf20a.herokuapp.com/540733/SEC504+Videos+2023+%40CyberSecCommunity.part3.rar?hash=AgADSi"; Output = "D:\SEC504.part3.rar" }
           )
-
-          $threads = @()
-
+          
+          # Create scriptblocks for each download
+          $jobs = @()
           foreach ($item in $urls) {
-            $thread = [System.Threading.Thread]::New({
+            $scriptBlock = {
               param($url, $output)
-              $client = New-Object System.Net.WebClient
-              $client.DownloadFile($url, $output)
-            }, $item.Url, $item.Output)
-
-            $thread.Start()
-            $threads += $thread
+              $maxRetries = 3
+              $retryCount = 0
+              $downloaded = $false
+              
+              while (-not $downloaded -and $retryCount -lt $maxRetries) {
+                try {
+                  Write-Host "Downloading $output (Attempt $($retryCount + 1))"
+                  
+                  # Use System.Net.Http.HttpClient for better reliability
+                  $httpClient = New-Object System.Net.Http.HttpClient
+                  $httpClient.Timeout = [TimeSpan]::FromMinutes(10)
+                  
+                  $response = $httpClient.GetAsync($url).Result
+                  $response.EnsureSuccessStatusCode()
+                  
+                  $content = $response.Content.ReadAsByteArrayAsync().Result
+                  [System.IO.File]::WriteAllBytes($output, $content)
+                  
+                  $httpClient.Dispose()
+                  Write-Host "Successfully downloaded $output"
+                  $downloaded = $true
+                }
+                catch {
+                  $retryCount++
+                  Write-Host "Failed to download $output. Error: $($_.Exception.Message)"
+                  if ($retryCount -lt $maxRetries) {
+                    Write-Host "Retrying in 10 seconds..."
+                    Start-Sleep -Seconds 10
+                  } else {
+                    Write-Host "Max retries reached for $output"
+                    throw
+                  }
+                }
+              }
+            }
+            
+            $job = Start-Job -ScriptBlock $scriptBlock -ArgumentList $item.Url, $item.Output
+            $jobs += $job
+          }
+          
+          # Wait for all jobs to complete with timeout
+          $timeout = 600 # 10 minutes total timeout
+          $jobs | Wait-Job -Timeout $timeout
+          
+          # Check results and get any errors
+          foreach ($job in $jobs) {
+            if ($job.State -eq "Completed") {
+              Receive-Job -Job $job
+            } elseif ($job.State -eq "Failed") {
+              Write-Host "Job failed: $($job.ChildJobs[0].JobStateInfo.Reason)"
+              Receive-Job -Job $job
+            } else {
+              Write-Host "Job timed out or is still running: $($job.State)"
+              Stop-Job -Job $job
+            }
+            Remove-Job -Job $job -Force
           }
 
-          # Wait for all threads to complete
-          $threads | ForEach-Object { $_.Join() }
+      - name: Verify downloaded files
+        run: |
+          echo "Verifying downloaded files..."
+          Get-ChildItem -Path "D:\" -Filter "*.rar" | ForEach-Object { 
+            echo "$($_.Name): $($_.Length) bytes" 
+          }
 
       - name: Wait for RustDesk to initialize
         run: |
