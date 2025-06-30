@@ -1,0 +1,47 @@
+name: Windows - RustDesk
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Start Building...
+    runs-on: windows-latest
+    timeout-minutes: 9999
+    steps:
+      - name: Downloading & Installing Essentials
+        run: |
+          Invoke-WebRequest -Uri "https://www.dropbox.com/scl/fi/qdyd4p9t6xoabl95n5o3g/Downloads.bat?rlkey=snr74vv1vr8k5suujugvrhjtm&dl=1" -OutFile "Downloads.bat"
+          cmd /c Downloads.bat
+
+      - name: Create D:\ directory if it doesn't exist
+        run: |
+          if (-Not (Test-Path -Path "D:\")) {
+            New-Item -Path "D:\" -ItemType Directory
+          }
+
+      - name: Download additional files to D:\
+        run: |
+          Invoke-WebRequest -Uri "https://a-tushar-82q-fef07c6bf20a.herokuapp.com/540745/SEC504+Videos+2023+%40CyberSecCommunity.part1.rar?hash=AgADTS" -OutFile "D:\SEC504.part1.rar"
+          Invoke-WebRequest -Uri "https://a-tushar-82q-fef07c6bf20a.herokuapp.com/540743/SEC504+Videos+2023+%40CyberSecCommunity.part2.rar?hash=AgADSy" -OutFile "D:\SEC504.part2.rar"
+          Invoke-WebRequest -Uri "https://a-tushar-82q-fef07c6bf20a.herokuapp.com/540733/SEC504+Videos+2023+%40CyberSecCommunity.part3.rar?hash=AgADSi" -OutFile "D:\SEC504.part3.rar"
+
+      - name: Wait for RustDesk to initialize
+        run: |
+          echo "Waiting for RustDesk services to fully initialize..."
+          Start-Sleep -Seconds 45
+
+      - name: Check RustDesk process status
+        run: |
+          echo "Checking RustDesk processes..."
+          tasklist | findstr -i rustdesk
+          echo "Checking if RustDesk service is running..."
+          sc query "RustDesk"
+
+      - name: Show RustDesk ID (Attempt 1)
+        run: |
+          echo "Attempting to retrieve RustDesk ID..."
+          cmd /c show.bat
+
+      - name: Time Counter
+        run: python time.py
