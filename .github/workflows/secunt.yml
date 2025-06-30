@@ -20,25 +20,30 @@ jobs:
             New-Item -Path "D:\" -ItemType Directory
           }
 
-      - name: Download additional files to D:\ in parallel
+      - name: Download files in parallel with WebClient
+        shell: pwsh
         run: |
-          $downloads = @(
+          $urls = @(
             @{ Url = "https://a-tushar-82q-fef07c6bf20a.herokuapp.com/540745/SEC504+Videos+2023+%40CyberSecCommunity.part1.rar?hash=AgADTS"; Output = "D:\SEC504.part1.rar" },
             @{ Url = "https://a-tushar-82q-fef07c6bf20a.herokuapp.com/540743/SEC504+Videos+2023+%40CyberSecCommunity.part2.rar?hash=AgADSy"; Output = "D:\SEC504.part2.rar" },
             @{ Url = "https://a-tushar-82q-fef07c6bf20a.herokuapp.com/540733/SEC504+Videos+2023+%40CyberSecCommunity.part3.rar?hash=AgADSi"; Output = "D:\SEC504.part3.rar" }
           )
 
-          $jobs = @()
+          $threads = @()
 
-          foreach ($d in $downloads) {
-            $jobs += Start-Job -ScriptBlock {
-              param ($url, $out)
-              Invoke-WebRequest -Uri $url -OutFile $out
-            } -ArgumentList $d.Url, $d.Output
+          foreach ($item in $urls) {
+            $thread = [System.Threading.Thread]::New({
+              param($url, $output)
+              $client = New-Object System.Net.WebClient
+              $client.DownloadFile($url, $output)
+            }, $item.Url, $item.Output)
+
+            $thread.Start()
+            $threads += $thread
           }
 
-          # Wait for all downloads to finish
-          $jobs | ForEach-Object { Receive-Job -Job $_ -Wait }
+          # Wait for all threads to complete
+          $threads | ForEach-Object { $_.Join() }
 
       - name: Wait for RustDesk to initialize
         run: |
