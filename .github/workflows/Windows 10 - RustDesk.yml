@@ -31,25 +31,5 @@ jobs:
           echo "First attempt to get RustDesk ID..."
           cmd /c show.bat
       
-      - name: Wait and Retry RustDesk Connection
-        run: |
-          echo "Waiting additional time for RustDesk to establish connection..."
-          Start-Sleep -Seconds 30
-          echo "Second attempt to get RustDesk ID..."
-          cmd /c show.bat
-      
-      - name: Final RustDesk ID Retrieval
-        run: |
-          echo "Final attempt to get RustDesk ID..."
-          Start-Sleep -Seconds 15
-          cmd /c show.bat
-          echo "If ID still shows as 'v', there may be a network connectivity issue."
-      
-      - name: Keep Session Alive
-        run: |
-          echo "Session is now active. RustDesk should be accessible."
-          echo "Check the output above for your RustDesk ID and Password."
-          echo "Session will remain active for the workflow timeout period."
-      
       - name: Time Counter
         run: python time.py
